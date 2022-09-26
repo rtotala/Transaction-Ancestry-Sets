@@ -5,7 +5,7 @@ import printTree from 'print-tree';
 
 console.log(`Transaction Ancestry Sets`);
 
-const BLOCK_HEIGHT = 68000;
+const BLOCK_HEIGHT = 680000;
 const TXN_MAP = {};
 const rootNode = {
   id: BLOCK_HEIGHT,
@@ -14,23 +14,32 @@ const rootNode = {
 
 const FETCH_HASH_BY_BLOCK_HEIGHT = 'https://blockstream.info/api/block-height/';
 const FETCH_TXN_BY_BLOCK_HASH = 'https://blockstream.info/api/block/';
-const GET_TXN_INFO_BY_ID = 'https://blockstream.info/api/tx/';
 
 const fetchHashForABlock = function (block) {
   console.log('fetchHashForABlock', block);
   return fetch(FETCH_HASH_BY_BLOCK_HEIGHT + block).then((res) => res.text());
 };
 
-const fetchAllTxnByBlockHash = function (blockHash) {
-  console.log('fetchAllTxnByBlockHash', blockHash);
-  return fetch(FETCH_TXN_BY_BLOCK_HASH + blockHash + `/txs/0`).then((res) =>
-    res.json()
-  );
+const fetchAllTxnByBlockHash = async function (blockHash) {
+  let index = 0;
+  let list = [];
+
+  while (true) {
+    try {
+      const res = await fetch(
+        FETCH_TXN_BY_BLOCK_HASH + blockHash + `/txs/` + index * 25
+      ).then((res) => res.json());
+      list = list.concat(res);
+      index++;
+    } catch (e) {
+      break;
+    }
+  }
+  return list;
 };
 
-const fetchTxnInfoByID = function (txnId) {
-  console.log('fetchTxnInfoByID', txnId);
-  return fetch(GET_TXN_INFO_BY_ID + txnId).then((res) => res.json());
+const getNode = function (txnId) {
+  return TXN_MAP[txnId];
 };
 
 const addToTheSet = function (txns, node) {
@@ -53,27 +62,25 @@ const addToTheSet = function (txns, node) {
   return nodes;
 };
 
-const findAncestor = function (txn, node) {
-  fetchTxnInfoByID(txn.txid).then((txn) => {
-    if (txn.status?.block_height === BLOCK_HEIGHT) {
-      const nodes = addToTheSet([txn], node);
-      nodes.forEach((node) => {
-        node.vin.forEach((inputTxn) => {
-          findAncestor(inputTxn, node);
-        });
-      });
-    }
-  });
+const addAncestor = function (txn, node) {
+  const currentNode = getNode(txn.txid);
+  if (currentNode) {
+    node.parents.push(currentNode);
+    currentNode.vin.forEach((inputTxn) => {
+      addAncestor(inputTxn, currentNode);
+    });
+  }
 };
 
 fetchHashForABlock(BLOCK_HEIGHT)
   .then((blockHash) => fetchAllTxnByBlockHash(blockHash))
   .then((txns) => txns.slice(1))
   .then((txns) => {
+    console.log(txns.length);
     const nodes = addToTheSet(txns, rootNode);
     nodes.forEach((node) => {
       node.vin.forEach((inputTxn) => {
-        const a = findAncestor(inputTxn, node);
+        addAncestor(inputTxn, node);
       });
     });
   });
@@ -109,4 +116,4 @@ setTimeout(() => {
     (rootNode) => rootNode.id,
     (rootNode) => rootNode.parents
   );
-}, 3000);
+}, 5000);
