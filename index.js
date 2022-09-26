@@ -45,26 +45,29 @@ const getNode = function (txnId) {
 const addToTheSet = function (txns, node) {
   const nodes = [];
   txns.forEach((txn) => {
-    const currentNode = {
-      id: txn.txid,
-      parents: [],
-      vin: txn.vin,
-    };
-    nodes.push(currentNode);
-
     if (!TXN_MAP[txn.txid]) {
+      const currentNode = {
+        id: txn.txid,
+        parents: [],
+        parentsMap: {},
+        vin: txn.vin,
+      };
+
+      nodes.push(currentNode);
       TXN_MAP[txn.txid] = currentNode;
     }
   });
 
   node.parents = node.parents.concat(nodes);
+  node.parentsMap = TXN_MAP;
 
   return nodes;
 };
 
 const addAncestor = function (txn, node) {
   const currentNode = getNode(txn.txid);
-  if (currentNode) {
+  if (currentNode && !node.parentsMap[currentNode.id]) {
+    node.parentsMap[currentNode.id] = currentNode;
     node.parents.push(currentNode);
     currentNode.vin.forEach((inputTxn) => {
       addAncestor(inputTxn, currentNode);
@@ -76,7 +79,6 @@ fetchHashForABlock(BLOCK_HEIGHT)
   .then((blockHash) => fetchAllTxnByBlockHash(blockHash))
   .then((txns) => txns.slice(1))
   .then((txns) => {
-    console.log(txns.length);
     const nodes = addToTheSet(txns, rootNode);
     nodes.forEach((node) => {
       node.vin.forEach((inputTxn) => {
@@ -109,8 +111,8 @@ const printAncestorSetforAllTxn = function (txnMap) {
 };
 
 setTimeout(() => {
-  printTransactionList(TXN_MAP);
-  printAncestorSetforAllTxn(TXN_MAP);
+  // printTransactionList(TXN_MAP);
+  // printAncestorSetforAllTxn(TXN_MAP);
   printTree(
     rootNode,
     (rootNode) => rootNode.id,
