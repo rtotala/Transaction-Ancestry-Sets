@@ -7,6 +7,10 @@ console.log(`Transaction Ancestry Sets`);
 
 const BLOCK_HEIGHT = 68000;
 const TXN_MAP = {};
+const rootNode = {
+  id: BLOCK_HEIGHT,
+  parents: [],
+};
 
 const FETCH_HASH_BY_BLOCK_HEIGHT = 'https://blockstream.info/api/block-height/';
 const FETCH_TXN_BY_BLOCK_HASH = 'https://blockstream.info/api/block/';
@@ -37,8 +41,8 @@ const addToTheSet = function (txns, node) {
       parents: [],
       vin: txn.vin,
     };
-
     nodes.push(currentNode);
+
     if (!TXN_MAP[txn.txid]) {
       TXN_MAP[txn.txid] = currentNode;
     }
@@ -60,11 +64,6 @@ const findAncestor = function (txn, node) {
       });
     }
   });
-};
-
-const rootNode = {
-  id: BLOCK_HEIGHT,
-  parents: [],
 };
 
 fetchHashForABlock(BLOCK_HEIGHT)
@@ -110,4 +109,4 @@ setTimeout(() => {
     (rootNode) => rootNode.id,
     (rootNode) => rootNode.parents
   );
-}, 5000);
+}, 3000);
