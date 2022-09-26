@@ -140,9 +140,9 @@ setTimeout(() => {
   console.log('Largest ancestry sets - 10 txns');
   printAncestoryTree(largetTreeTxnId, 10);
   console.log('-------------------------');
-  printTree(
-    rootNode,
-    (rootNode) => rootNode.id,
-    (rootNode) => rootNode.parents
-  );
-}, 1000);
+  // printTree(
+  //   rootNode,
+  //   (rootNode) => rootNode.id,
+  //   (rootNode) => rootNode.parents
+  // );
+}, 2000);
