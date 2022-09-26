@@ -5,6 +5,7 @@ import printTree from 'print-tree';
 
 console.log(`Transaction Ancestry Sets`);
 
+// Initilize Variable
 const BLOCK_HEIGHT = 680000;
 const TXN_MAP = {};
 const rootNode = {
@@ -12,11 +13,11 @@ const rootNode = {
   parentsMap: {},
   parents: [],
 };
-let largetTreeTxnId = undefined;
-
 const FETCH_HASH_BY_BLOCK_HEIGHT = 'https://blockstream.info/api/block-height/';
 const FETCH_TXN_BY_BLOCK_HASH = 'https://blockstream.info/api/block/';
+let LARGEST_ANCESTOR_TXD = undefined;
 
+// API calls
 const fetchHashForABlock = function (block) {
   console.log('fetchHashForABlock', block);
   return fetch(FETCH_HASH_BY_BLOCK_HEIGHT + block).then((res) => res.text());
@@ -40,6 +41,7 @@ const fetchAllTxnByBlockHash = async function (blockHash) {
   return list;
 };
 
+// Utils Methods
 const getNode = function (txnId) {
   return TXN_MAP[txnId];
 };
@@ -87,18 +89,7 @@ const getAncestorList = function (node) {
   return list;
 };
 
-fetchHashForABlock(BLOCK_HEIGHT)
-  .then((blockHash) => fetchAllTxnByBlockHash(blockHash))
-  .then((txns) => txns.slice(1))
-  .then((txns) => {
-    const nodes = addToTheSet(txns, rootNode);
-    nodes.forEach((node) => {
-      node.vin.forEach((inputTxn) => {
-        addAncestor(inputTxn, node);
-      });
-    });
-  });
-
+// Print Results Methods
 const printTransactionList = function (txnMap) {
   console.log('--------------------------');
   console.log('All Transaction for ' + BLOCK_HEIGHT);
@@ -108,20 +99,21 @@ const printTransactionList = function (txnMap) {
 
 const printAncestorSetforAllTxn = function (txnMap) {
   let max = -1;
-  console.log('--------------------------');
-  console.log('Ancestor Set for Every Transaction in the Block' + BLOCK_HEIGHT);
-
+  let largestTreeTxnId = undefined;
+  console.log(
+    'Ancestor Set for Every Transaction in the Block ' + BLOCK_HEIGHT
+  );
   Object.keys(txnMap).forEach((txn) => {
     const list = getAncestorList(txnMap[txn]);
     txnMap[txn].list = list.slice(1);
     if (list.length > max) {
       max = list.length;
-      largetTreeTxnId = txn;
+      largestTreeTxnId = txn;
     }
     printAncestoryTree(txn);
   });
 
-  console.log('--------------------------');
+  LARGEST_ANCESTOR_TXD = largestTreeTxnId;
 };
 
 const printAncestoryTree = function (txnId, limit) {
@@ -134,15 +126,36 @@ const printAncestoryTree = function (txnId, limit) {
   console.log('--------------------------');
 };
 
-setTimeout(() => {
+const printLargestAncestorySet = function (txn, limit) {
+  console.log('-------------------------');
+  console.log('Largest ancestry sets - 10 txns');
+  printAncestoryTree(txn, limit);
+};
+
+const printResult = function () {
   printTransactionList(TXN_MAP);
   printAncestorSetforAllTxn(TXN_MAP);
-  console.log('Largest ancestry sets - 10 txns');
-  printAncestoryTree(largetTreeTxnId, 10);
-  console.log('-------------------------');
-  // printTree(
-  //   rootNode,
-  //   (rootNode) => rootNode.id,
-  //   (rootNode) => rootNode.parents
-  // );
-}, 2000);
+  printLargestAncestorySet(LARGEST_ANCESTOR_TXD);
+  printTree(
+    rootNode,
+    (rootNode) => rootNode.id,
+    (rootNode) => rootNode.parents
+  );
+};
+
+// Flow
+fetchHashForABlock(BLOCK_HEIGHT)
+  .then((blockHash) => fetchAllTxnByBlockHash(blockHash))
+  .then((txns) => txns.slice(1))
+  .then((txns) => {
+    const nodes = addToTheSet(txns, rootNode);
+    nodes.forEach((node) => {
+      node.vin.forEach((inputTxn) => {
+        addAncestor(inputTxn, node);
+      });
+    });
+  })
+  .then(printResult)
+  .catch((e) => {
+    console.log('Error: ', e);
+  });
